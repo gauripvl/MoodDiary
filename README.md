@@ -15,7 +15,9 @@ A beautiful, interactive journal application that changes its background like a 
 - ✨ **Era-Specific Animated GIFs** - Shows an animated Taylor Swift GIF from the same era as the recommended song
 - ✍️ **Cursive Handwriting** - Beautiful handwritten font for authentic diary feel
 - 📄 **Ruled Paper Design** - Classic notebook lines with red margin
-- 💾 **Local Storage** - Your entries are saved in your browser
+- 🔐 **User Authentication** - Secure login with email/password
+- ☁️ **Cloud Storage** - Your entries are saved to Supabase and sync across devices
+- 🔒 **Private & Secure** - Row-level security ensures only you can see your entries
 - 📅 **Automatic Dating** - Each entry is automatically dated
 - 📱 **Responsive Design** - Works beautifully on all devices
 - 🎭 **5 Mood States** - Very Positive, Positive, Neutral, Negative, Very Negative
@@ -34,27 +36,46 @@ A beautiful, interactive journal application that changes its background like a 
    npm install
    ```
 
-2. **Set Up API Keys (for Taylor Swift song matching & GIFs)**
+2. **Set Up Database (Supabase)**
    
-   Create a `.env.local` file in the root directory:
+   See **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)** for complete database setup instructions.
+   
+   **Quick version:**
+   - Your Supabase is already connected through Vercel
+   - Run the SQL schema from `/supabase/schema.sql` in Supabase SQL Editor
+   - Enable Email authentication in Supabase dashboard
+   
+3. **Set Up API Keys (for Taylor Swift song matching & GIFs)**
+   
+   If deploying locally, create a `.env.local` file:
    ```bash
+   # Supabase (get from Vercel environment variables or Supabase dashboard)
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   
+   # Optional: Taylor Swift features
    OPENAI_API_KEY=your_openai_api_key_here
    GIPHY_API_KEY=your_giphy_api_key_here
    ```
    
    Get your API keys:
+   - **Supabase**: Already in Vercel (or get from Supabase dashboard → Project Settings → API)
    - **OpenAI**: [OpenAI Platform](https://platform.openai.com/api-keys)
    - **Giphy**: [Giphy Developers](https://developers.giphy.com/) (free tier available)
    
-   > Note: The Taylor Swift song matching feature requires an OpenAI API key. The animated GIF feature requires a Giphy API key. The diary will still work without them, but you won't get song recommendations or GIFs.
+   > Note: Supabase keys are required. Taylor Swift song matching and GIFs are optional features.
 
-3. **Run Development Server**
+4. **Run Development Server**
    ```bash
    npm run dev
    ```
 
-4. **Open Your Browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+5. **Create Your Account**
+   - Navigate to [http://localhost:3000](http://localhost:3000)
+   - You'll be redirected to `/login`
+   - Click "Sign Up" and create your account
+   - Check your email for confirmation link
+   - Sign in and start journaling!
 
 ## 🌐 Deploy to Vercel (Recommended)
 

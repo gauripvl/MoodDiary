@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import JournalEditor from './components/JournalEditor'
 import EntriesList from './components/EntriesList'
 
@@ -10,38 +12,123 @@ export interface JournalEntry {
   mood: string
   sentiment: number
   timestamp: number
+  user_id?: string
 }
 
 export default function Home() {
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [currentMood, setCurrentMood] = useState('neutral')
   const [showEntries, setShowEntries] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const supabase = createClient()
 
-  // Load entries from localStorage on mount
+  // Check authentication and load entries
   useEffect(() => {
-    const savedEntries = localStorage.getItem('moodDiaryEntries')
-    if (savedEntries) {
-      setEntries(JSON.parse(savedEntries))
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/login')
+        return
+      }
+      
+      setUser(user)
+      await loadEntries()
+      setLoading(false)
     }
+
+    checkAuth()
+
+    // Subscribe to auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.push('/login')
+      } else {
+        setUser(session.user)
+        loadEntries()
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  // Save entries to localStorage whenever they change
-  useEffect(() => {
-    if (entries.length > 0) {
-      localStorage.setItem('moodDiaryEntries', JSON.stringify(entries))
-    }
-  }, [entries])
+  const loadEntries = async () => {
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  const handleSaveEntry = (entry: JournalEntry) => {
-    setEntries([entry, ...entries])
+    if (error) {
+      console.error('Error loading entries:', error)
+      return
+    }
+
+    // Convert database format to app format
+    const formattedEntries = data.map((entry: any) => ({
+      id: entry.id,
+      content: entry.content,
+      mood: entry.mood,
+      sentiment: entry.sentiment,
+      timestamp: new Date(entry.created_at).getTime(),
+      user_id: entry.user_id,
+    }))
+
+    setEntries(formattedEntries)
   }
 
-  const handleDeleteEntry = (id: string) => {
-    const updatedEntries = entries.filter(entry => entry.id !== id)
-    setEntries(updatedEntries)
-    if (updatedEntries.length === 0) {
-      localStorage.removeItem('moodDiaryEntries')
+  const handleSaveEntry = async (entry: JournalEntry) => {
+    const { error } = await supabase
+      .from('journal_entries')
+      .insert({
+        content: entry.content,
+        mood: entry.mood,
+        sentiment: entry.sentiment,
+        user_id: user.id,
+      })
+
+    if (error) {
+      console.error('Error saving entry:', error)
+      alert('Failed to save entry. Please try again.')
+      return
     }
+
+    // Reload entries to get the new one with its ID
+    await loadEntries()
+  }
+
+  const handleDeleteEntry = async (id: string) => {
+    const { error } = await supabase
+      .from('journal_entries')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting entry:', error)
+      alert('Failed to delete entry. Please try again.')
+      return
+    }
+
+    // Remove from local state
+    setEntries(entries.filter(entry => entry.id !== id))
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ 
+        background: 'linear-gradient(135deg, #A8B4F5 0%, #C8AFF0 50%, #D4A5F6 100%)',
+      }}>
+        <div className="text-white text-2xl font-semibold">Loading...</div>
+      </div>
+    )
   }
 
   const getMoodGradient = (mood: string) => {
@@ -69,9 +156,18 @@ export default function Home() {
     >
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
-            Mood Diary
-          </h1>
+          <div className="flex justify-between items-center mb-4">
+            <div></div>
+            <h1 className="text-5xl font-bold text-white drop-shadow-lg">
+              Mood Diary
+            </h1>
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-full text-sm font-medium transition-all"
+            >
+              Sign Out
+            </button>
+          </div>
           <p className="text-white/90 text-lg drop-shadow">
             Your journal that feels what you write
           </p>
